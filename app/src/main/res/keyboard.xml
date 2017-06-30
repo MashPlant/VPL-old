@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<keyboard xmlns:android="http://schemas.android.com/apk/res/android" android:keywidth="33%p" android:horizontalgap="0px" android:verticalgap="0px" android:keyheight="10%p">
+    <row>
+        <key android:codes="49" android:keylabel="1">
+            <key android:codes="50" android:keylabel="2">
+                <key android:codes="51" android:keylabel="3">
+                </key></key></key></row>
+    <row>
+        <key android:codes="52" android:keylabel="4">
+            <key android:codes="53" android:keylabel="5">
+                <key android:codes="54" android:keylabel="6">
+                </key></key></key></row>
+    <row>
+        <key android:codes="55" android:keylabel="7">
+            <key android:codes="56" android:keylabel="8">
+                <key android:codes="57" android:keylabel="9">
+                </key></key></key></row>
+    <row>
+        <key android:codes="4896" android:keylabel="清空">
+            <key android:codes="48" android:keylabel="0">
+                <key android:codes="-5" android:keyicon="@drawable/sym_keyboard_delete">
+                </key></key></key></row>
+</keyboard>
