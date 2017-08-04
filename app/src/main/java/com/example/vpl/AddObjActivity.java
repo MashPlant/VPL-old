@@ -126,6 +126,9 @@ public class AddObjActivity extends AppCompatActivity {
             case VPLFrame.CIRCLE_TRACK:
                 setTitle("圆弧轨道");
                 break;
+            case VPLFrame.PARTICLE_GENERATOR:
+                setTitle("粒子发生器");
+                break;
             case VPLFrame.SETTING:
                 setTitle("通用设置");
                 break;
@@ -196,7 +199,17 @@ public class AddObjActivity extends AppCompatActivity {
                 if (kind == VPLFrame.POLE || kind == VPLFrame.SPRING || kind == VPLFrame.ROPE) {
                     if (position == 2) {
                         if (vplFrame.getMovingObjList().size() >= 2) {
-                            vplFrame.isChoosingObj = true;
+                            vplFrame.isChoosingConnectObj = true;
+                            MainActivity.removeAllFab();
+                            MainActivity.ensure_choose.setVisibility(View.VISIBLE);
+                            finish();
+                        }
+                    }
+                }
+                if (kind==VPLFrame.PARTICLE_GENERATOR){
+                    if (position==1){
+                        if (vplFrame.getMovingObjList().size() >= 1) {
+                            vplFrame.isChoosingGenerateObj = true;
                             MainActivity.removeAllFab();
                             MainActivity.ensure_choose.setVisibility(View.VISIBLE);
                             finish();
@@ -649,6 +662,30 @@ public class AddObjActivity extends AppCompatActivity {
                             finish();
                             break;
                         }
+                        case VPLFrame.PARTICLE_GENERATOR:{
+                            for (int i=0;i<6;i++){
+                                if (i==2||i==1)
+                                    continue;
+                                LinearLayout layout = (LinearLayout) (listView.getChildAt(i));
+                                EditText editText = (EditText) layout.findViewById(R.id.input);
+                                String string = editText.getText().toString();
+                                try {
+                                    values[i] = Calculator.resultOf(string.isEmpty() ? editText.getHint().toString() : string);
+                                } catch (Exception e) {
+                                    Toast.makeText(AddObjActivity.this, "请输入合法实数", Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+                            }
+                            boolean b=((Switch) (listView.getChildAt(5).findViewById(R.id.choose))).isChecked();
+                            int i=values[0].intValue();
+                            if (i<0||i>=vplFrame.getMovingObjList().size()){
+                                Toast.makeText(AddObjActivity.this, "请选择合法对象", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            vplFrame.getGeneratorList().add(vplFrame.new ParticleGenerator(vplFrame.getMovingObjList().get(i).clone(),b ? VPLFrame.GENERATOR_TIME:VPLFrame.GENERATOR_TIME,values[3],values[4],values[5]));
+                            finish();
+                            break;
+                        }
                     }
                 }
             });
@@ -757,7 +794,7 @@ public class AddObjActivity extends AppCompatActivity {
                     settingItemList.add(new SettingItem("初始位置y1", Double.toString(field.y1), SettingItem.INPUT));
                     settingItemList.add(new SettingItem("初始位置x2", Double.toString(field.x2), SettingItem.INPUT));
                     settingItemList.add(new SettingItem("初始位置y2", Double.toString(field.y2), SettingItem.INPUT));
-                    settingItemList.add(new SettingItem("磁感应强度B", field.variables.indexOf(111972721) != -1 ? field.exps.get(field.variables.indexOf(111972721)).getExp() :Double.toString(field.value), SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("磁感应强度B", field.variables.indexOf(111972721) != -1 ? field.exps.get(field.variables.indexOf(111972721)).getExp() : Double.toString(field.value), SettingItem.INPUT));
                 } else {
                     settingItemList.add(new SettingItem("初始位置x1", "-10", SettingItem.INPUT));
                     settingItemList.add(new SettingItem("初始位置y1", "-10", SettingItem.INPUT));
@@ -772,7 +809,7 @@ public class AddObjActivity extends AppCompatActivity {
                     settingItemList.add(new SettingItem("圆心横坐标x", Double.toString(field.x1), SettingItem.INPUT));
                     settingItemList.add(new SettingItem("圆心纵坐标y", Double.toString(field.y1), SettingItem.INPUT));
                     settingItemList.add(new SettingItem("半径r", Double.toString(field.x2), SettingItem.INPUT));
-                    settingItemList.add(new SettingItem("磁感应强度B", field.variables.indexOf(111972721) != -1 ? field.exps.get(field.variables.indexOf(111972721)).getExp() :Double.toString(field.value), SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("磁感应强度B", field.variables.indexOf(111972721) != -1 ? field.exps.get(field.variables.indexOf(111972721)).getExp() : Double.toString(field.value), SettingItem.INPUT));
                 } else {
                     settingItemList.add(new SettingItem("圆心横坐标x", "0", SettingItem.INPUT));
                     settingItemList.add(new SettingItem("圆心纵坐标y", "0", SettingItem.INPUT));
@@ -818,30 +855,55 @@ public class AddObjActivity extends AppCompatActivity {
                 break;
             case VPLFrame.ROPE:
             case VPLFrame.POLE:
-                if (vplFrame.isChoosingObj) {
-                    vplFrame.isChoosingObj = false;
+                if (vplFrame.isChoosingConnectObj) {
+                    vplFrame.isChoosingConnectObj = false;
                     settingItemList.add(new SettingItem("连接对象1", Integer.toString(vplFrame.chooseObj1), SettingItem.INPUT));
                     settingItemList.add(new SettingItem("连接对象2", Integer.toString(vplFrame.chooseObj2), SettingItem.INPUT));
-                    settingItemList.add(new SettingItem("在VPLFrame中选取对象", "", SettingItem.NOTHING));
+                    settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
                 } else {
                     if (vplFrame.selectedKind == VPLFrame.ROPE || vplFrame.selectedKind == VPLFrame.POLE) {
                         VPLFrame.Connecter connecter = vplFrame.getConnecterList().get(vplFrame.selectedPos);
                         settingItemList.add(new SettingItem("连接对象1", Integer.toString(connecter.obj1), SettingItem.INPUT));
                         settingItemList.add(new SettingItem("连接对象2", Integer.toString(connecter.obj2), SettingItem.INPUT));
-                        settingItemList.add(new SettingItem("在VPLFrame中选取对象", "", SettingItem.NOTHING));
+                        settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
                     } else {
                         settingItemList.add(new SettingItem("连接对象1", "0", SettingItem.INPUT));
                         settingItemList.add(new SettingItem("连接对象2", "1", SettingItem.INPUT));
-                        settingItemList.add(new SettingItem("在VPLFrame中选取对象", "", SettingItem.NOTHING));
+                        settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
                     }
                 }
                 break;
+            case VPLFrame.PARTICLE_GENERATOR:
+                if (vplFrame.isChoosingGenerateObj) {
+                    vplFrame.isChoosingGenerateObj = false;
+                    settingItemList.add(new SettingItem("发射粒子编号", Integer.toString(vplFrame.chooseObj1), SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
+                    settingItemList.add(new SettingItem("类型", " | |false", SettingItem.CHOOSE));
+                    settingItemList.add(new SettingItem("起始", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("终止", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("发射间隔", "0", SettingItem.INPUT));
+                } else if (vplFrame.selectedKind == VPLFrame.PARTICLE_GENERATOR) {
+                   /* VPLFrame.ParticleGenerator generator=vplFrame.getGeneratorList().get(vplFrame.selectedPos);
+                    settingItemList.add(new SettingItem("发射粒子编号", Integer.toString(), SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
+                    settingItemList.add(new SettingItem("起始", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("终止", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("发射间隔", "0", SettingItem.INPUT));*/
+                } else {
+                    settingItemList.add(new SettingItem("发射粒子编号", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
+                    settingItemList.add(new SettingItem("类型", " | |false", SettingItem.CHOOSE));
+                    settingItemList.add(new SettingItem("起始", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("终止", "0", SettingItem.INPUT));
+                    settingItemList.add(new SettingItem("发射间隔", "0", SettingItem.INPUT));
+                }
+                break;
             case VPLFrame.SPRING:
-                if (vplFrame.isChoosingObj) {
-                    vplFrame.isChoosingObj = false;
+                if (vplFrame.isChoosingConnectObj) {
+                    vplFrame.isChoosingConnectObj = false;
                     settingItemList.add(new SettingItem("连接对象1", Integer.toString(vplFrame.chooseObj1), SettingItem.INPUT));
                     settingItemList.add(new SettingItem("连接对象2", Integer.toString(vplFrame.chooseObj2), SettingItem.INPUT));
-                    settingItemList.add(new SettingItem("在VPLFrame中选取对象", "", SettingItem.NOTHING));
+                    settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
                     settingItemList.add(new SettingItem("劲度系数k", "10", SettingItem.INPUT));
                     settingItemList.add(new SettingItem("弹簧长度(0为默认)", "0", SettingItem.INPUT));
                 } else {
@@ -849,13 +911,13 @@ public class AddObjActivity extends AppCompatActivity {
                         VPLFrame.Connecter connecter = vplFrame.getConnecterList().get(vplFrame.selectedPos);
                         settingItemList.add(new SettingItem("连接对象1", Integer.toString(connecter.obj1), SettingItem.INPUT));
                         settingItemList.add(new SettingItem("连接对象2", Integer.toString(connecter.obj2), SettingItem.INPUT));
-                        settingItemList.add(new SettingItem("在VPLFrame中选取对象", "", SettingItem.NOTHING));
+                        settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
                         settingItemList.add(new SettingItem("劲度系数k", Double.toString(connecter.k), SettingItem.INPUT));
                         settingItemList.add(new SettingItem("弹簧长度(0为默认)", Double.toString(connecter.length), SettingItem.INPUT));
                     } else {
                         settingItemList.add(new SettingItem("连接对象1", "0", SettingItem.INPUT));
                         settingItemList.add(new SettingItem("连接对象2", "1", SettingItem.INPUT));
-                        settingItemList.add(new SettingItem("在VPLFrame中选取对象", "", SettingItem.NOTHING));
+                        settingItemList.add(new SettingItem("在VPLFrame中选取", "", SettingItem.NOTHING));
                         settingItemList.add(new SettingItem("劲度系数k", "10", SettingItem.INPUT));
                         settingItemList.add(new SettingItem("弹簧长度(0为默认)", "0", SettingItem.INPUT));
                     }

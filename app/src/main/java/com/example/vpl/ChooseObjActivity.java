@@ -96,6 +96,7 @@ public class ChooseObjActivity extends AppCompatActivity {
         settingItemList.add(new SettingItem("轻质弹簧", "", SettingItem.NOTHING));
         settingItemList.add(new SettingItem("直线轨道", "", SettingItem.NOTHING));
         settingItemList.add(new SettingItem("圆弧轨道", "", SettingItem.NOTHING));
+        settingItemList.add(new SettingItem("粒子发生器", "", SettingItem.NOTHING));
     }
 
     @Override

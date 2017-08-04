@@ -24,6 +24,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.os.Handler;
 import android.widget.Button;
+import android.widget.SeekBar;
 
 /**
  * Created by MashPlant on 2016/4/4.
@@ -34,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     static PrintTrace printTrace = null;
     static PrintFrame printFrame = null;
     static FloatingActionButton pause = null, play = null, again = null, add = null, edit = null, delete = null, ensure_choose = null;
-
+    static SeekBar speed=null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,11 +81,28 @@ public class MainActivity extends AppCompatActivity {
         delete = (FloatingActionButton) findViewById(R.id.delete);
         edit = (FloatingActionButton) findViewById(R.id.edit);
         ensure_choose = (FloatingActionButton) findViewById(R.id.ensure_choose);
+        speed=(SeekBar) findViewById(R.id.speed);
         pause.setVisibility(View.VISIBLE);
         play.setVisibility(View.VISIBLE);
         again.setVisibility(View.VISIBLE);
         add.setVisibility(View.VISIBLE);
+        speed.setProgress(50);
+        speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                vplFrame.timeGap=0.2*Math.exp(progress/10.0-5.0);
+            }
 
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
         if (pause != null)
             pause.setOnClickListener(new View.OnClickListener() {
                 @Override

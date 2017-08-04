@@ -29,6 +29,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by MashPlant on 2016/4/4.
@@ -41,6 +43,7 @@ public class VPLFrame extends View implements SensorEventListener {
     private ArrayList<Field> fieldList = new ArrayList<>();
     private ArrayList<Connecter> connecterList = new ArrayList<>();
     private ArrayList<Track> trackList = new ArrayList<>();
+    private ArrayList<ParticleGenerator> generatorList = new ArrayList();
     float ratio = 20;
     private int height, width;
     private double deltaX = 0, deltaY = 0;
@@ -68,30 +71,75 @@ public class VPLFrame extends View implements SensorEventListener {
     static final int SPRING = 9;
     static final int LINE_TRACK = 10;
     static final int CIRCLE_TRACK = 11;
+    static final int PARTICLE_GENERATOR = 12;
     static final int SETTING = 100;
+    static final int GENERATOR_ANGLE = 2;
+    static final int GENERATOR_TIME = 1;
 
     public void setSaveInstance() {
-        saveInstance.movingObjList.clear();
-        Iterator<MovingObj> iterator = movingObjList.iterator();
-        while (iterator.hasNext()) {
-            saveInstance.movingObjList.add(iterator.next().clone());
+        this.saveInstance.movingObjList.clear();
+        this.saveInstance.fieldList.clear();
+        this.saveInstance.connecterList.clear();
+        this.saveInstance.forceCenterList.clear();
+        this.saveInstance.trackList.clear();
+        this.saveInstance.generatorList.clear();
+        Iterator localIterator1 = this.movingObjList.iterator();
+        Iterator localIterator2 = this.fieldList.iterator();
+        Iterator localIterator3 = this.connecterList.iterator();
+        Iterator localIterator4 = this.forceCenterList.iterator();
+        Iterator localIterator5 = this.trackList.iterator();
+        Iterator localIterator6 = this.generatorList.iterator();
+        while (localIterator1.hasNext()) {
+            this.saveInstance.movingObjList.add(((MovingObj) localIterator1.next()).clone());
         }
-        saveInstance.fieldList = new ArrayList<>(this.getFieldList());
-        saveInstance.forceCenterList = this.getForceCenterList();
-        saveInstance.connecterList = this.getConnecterList();
-        saveInstance.trackList = this.getTrackList();
+        while (localIterator2.hasNext()) {
+            this.saveInstance.fieldList.add(((Field) localIterator2.next()).clone());
+        }
+        while (localIterator3.hasNext()) {
+            this.saveInstance.connecterList.add(((Connecter) localIterator3.next()).clone());
+        }
+        while (localIterator4.hasNext()) {
+            this.saveInstance.forceCenterList.add(((ForceCenter) localIterator4.next()).clone());
+        }
+        while (localIterator5.hasNext()) {
+            this.saveInstance.trackList.add(((Track) localIterator5.next()).clone());
+        }
+        while (localIterator6.hasNext()) {
+            this.saveInstance.generatorList.add(((ParticleGenerator) localIterator6.next()).clone());
+        }
     }
 
     public void getSaveInstance() {
-        movingObjList.clear();
-        Iterator<MovingObj> iterator = saveInstance.movingObjList.iterator();
-        while (iterator.hasNext()) {
-            movingObjList.add(iterator.next().clone());
+        this.movingObjList.clear();
+        this.fieldList.clear();
+        this.connecterList.clear();
+        this.forceCenterList.clear();
+        this.trackList.clear();
+        this.generatorList.clear();
+        Iterator localIterator1 = this.saveInstance.movingObjList.iterator();
+        Iterator localIterator2 = this.saveInstance.fieldList.iterator();
+        Iterator localIterator3 = this.saveInstance.connecterList.iterator();
+        Iterator localIterator4 = this.saveInstance.forceCenterList.iterator();
+        Iterator localIterator5 = this.saveInstance.trackList.iterator();
+        Iterator localIterator6 = this.saveInstance.generatorList.iterator();
+        while (localIterator1.hasNext()) {
+            this.movingObjList.add(((MovingObj) localIterator1.next()).clone());
         }
-        fieldList = new ArrayList<>(saveInstance.fieldList);
-        connecterList = new ArrayList<>(saveInstance.connecterList);
-        forceCenterList = new ArrayList<>(saveInstance.forceCenterList);
-        trackList = new ArrayList<>(saveInstance.trackList);
+        while (localIterator2.hasNext()) {
+            this.fieldList.add(((Field) localIterator2.next()).clone());
+        }
+        while (localIterator3.hasNext()) {
+            this.connecterList.add(((Connecter) localIterator3.next()).clone());
+        }
+        while (localIterator4.hasNext()) {
+            this.forceCenterList.add(((ForceCenter) localIterator4.next()).clone());
+        }
+        while (localIterator5.hasNext()) {
+            this.trackList.add(((Track) localIterator5.next()).clone());
+        }
+        while (localIterator6.hasNext()) {
+            this.generatorList.add(((ParticleGenerator) localIterator6.next()).clone());
+        }
     }
 
     public void notifyChange() {
@@ -159,6 +207,8 @@ public class VPLFrame extends View implements SensorEventListener {
     public ArrayList<Connecter> getConnecterList() {
         return connecterList;
     }
+
+    public ArrayList<ParticleGenerator> getGeneratorList() {return generatorList;}
 
     public ArrayList<Field> getFieldList() {
         return fieldList;
@@ -284,6 +334,10 @@ public class VPLFrame extends View implements SensorEventListener {
                 drawCircle(movingObj.x, movingObj.y, movingObj.radius, canvas, movingObj.paint);
             }
         }
+        for (int i = 0; i < generatorList.size(); i++) {
+            MovingObj movingObj = generatorList.get(i).movingObj;
+            drawCircle(movingObj.x, movingObj.y, movingObj.radius, canvas, PrintFrame.greenLine);
+        }
         switch (selectedKind) {
             case -1:
                 break;
@@ -365,8 +419,13 @@ public class VPLFrame extends View implements SensorEventListener {
                         track.x1 + track.radius * Math.cos(end) + endTan.x, track.y1 + track.radius * Math.sin(end) + endTan.y, false, canvas, PrintFrame.normalLine);
                 break;
             }
+            case PARTICLE_GENERATOR: {
+                MovingObj movingObj = generatorList.get(selectedPos).movingObj;
+                drawCircle(movingObj.x, movingObj.y, movingObj.radius, canvas, PrintFrame.redLine);
+                break;
+            }
         }
-        if (isChoosingObj) {
+        if (isChoosingConnectObj) {
             MovingObj obj1 = movingObjList.get(chooseObj1);
             MovingObj obj2 = movingObjList.get(chooseObj2);
             drawCircle(obj1.x, obj1.y, obj1.radius, canvas, PrintFrame.redLine);
@@ -374,6 +433,10 @@ public class VPLFrame extends View implements SensorEventListener {
             if (choosingX != 0 && choosingY != 0) {
                 drawLine(obj1.x, obj1.y, toFrameX(choosingX), toFrameY(choosingY), canvas, PrintFrame.redLine);
             }
+        }
+        if (isChoosingGenerateObj){
+            MovingObj obj1 = movingObjList.get(chooseObj1);
+            drawCircle(obj1.x, obj1.y, obj1.radius, canvas, PrintFrame.redLine);
         }
 
     }
@@ -430,6 +493,9 @@ public class VPLFrame extends View implements SensorEventListener {
             case CIRCLE_TRACK:
                 trackList.remove(selectedPos);
                 break;
+            case PARTICLE_GENERATOR:
+                generatorList.remove(selectedPos);
+                break;
         }
         selectedKind = -1;
         selectedPos = 0;
@@ -442,7 +508,8 @@ public class VPLFrame extends View implements SensorEventListener {
     private int numPoint = 0, judgeClick = 0, stretchOri = 0;
     public int selectedKind = -1, selectedPos = 0;
     public int chooseObj1 = 0, chooseObj2 = 1;
-    public boolean isChoosingObj = false;
+    public boolean isChoosingConnectObj = false;
+    public boolean isChoosingGenerateObj = false;
     private float choosingX = 0, choosingY = 0;
     private int endOfTrack = 0;
     private double downX = 0, downY = 0;
@@ -469,7 +536,7 @@ public class VPLFrame extends View implements SensorEventListener {
             traceY = toFrameY(event.getRawY());
             invalidate();
         } else {
-            if (!isChoosingObj) {
+            if (!isChoosingConnectObj&&!isChoosingGenerateObj) {
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     case MotionEvent.ACTION_DOWN: {
                         double x = toFrameX(event.getRawX());
@@ -585,11 +652,18 @@ public class VPLFrame extends View implements SensorEventListener {
                                             frameVy[(frameVIndex % 5)] = (float) (event.getRawY() - startY) / deltaT;
                                             Log.d(TAG, "onTouchEvent: " + deltaT + " " + frameVx + " " + frameVy);
                                             break;
-                                        case MOVINGOBJ:
+                                        case MOVINGOBJ: {
                                             MovingObj movingObj = movingObjList.get(selectedPos);
                                             movingObj.x += (event.getRawX() - startX) / ratio;
                                             movingObj.y -= (event.getRawY() - startY) / ratio;
                                             break;
+                                        }
+                                        case PARTICLE_GENERATOR: {
+                                            MovingObj movingObj=generatorList.get(selectedPos).movingObj;
+                                            movingObj.x += (event.getRawX() - startX) / ratio;
+                                            movingObj.y -= (event.getRawY() - startY) / ratio;
+                                            break;
+                                        }
                                         case M_FIELD:
                                         case E_FIELD:
                                         case DAMP:
@@ -865,6 +939,14 @@ public class VPLFrame extends View implements SensorEventListener {
                                     hasSelected = true;
                                 }
                             }
+                            for (int i = 0; i < generatorList.size(); i++) {
+                                MovingObj movingObj = generatorList.get(i).movingObj;
+                                if (Math.sqrt(Math.pow(movingObj.x - x, 2) + Math.pow(movingObj.y - y, 2)) <= movingObj.radius + 1) {
+                                    selectedKind = PARTICLE_GENERATOR;
+                                    selectedPos = i;
+                                    hasSelected = true;
+                                }
+                            }
                             if (!hasSelected) {
                                 clickTimes++;
                                 if (clickTimes == 2 && System.currentTimeMillis() - doubleClickStartTime <= 600) {
@@ -919,12 +1001,12 @@ public class VPLFrame extends View implements SensorEventListener {
                         }
                         break;
                 }
-            } else {
+            } else if (isChoosingConnectObj){
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         for (int i = 0; i < movingObjList.size(); i++) {
                             MovingObj movingObj = movingObjList.get(i);
-                            if (Math.sqrt(Math.pow(movingObj.x - toFrameX(event.getRawX()), 2) + Math.pow(movingObj.y - toFrameY(event.getRawY()) / ratio, 2)) <= movingObj.radius + 1) {
+                            if (Math.sqrt(Math.pow(movingObj.x - toFrameX(event.getRawX()), 2) + Math.pow(movingObj.y - toFrameY(event.getRawY()), 2)) <= movingObj.radius + 1) {
                                 chooseObj1 = i;
                             }
                         }
@@ -943,6 +1025,13 @@ public class VPLFrame extends View implements SensorEventListener {
                         break;
                 }
                 invalidate();
+            }else{
+                for (int i = 0; i < movingObjList.size(); i++) {
+                    MovingObj movingObj = movingObjList.get(i);
+                    if (Math.sqrt(Math.pow(movingObj.x - toFrameX(event.getRawX()), 2) + Math.pow(movingObj.y - toFrameY(event.getRawY()), 2)) <= movingObj.radius + 1) {
+                        chooseObj1 = i;
+                    }
+                }
             }
         }
 
@@ -952,6 +1041,7 @@ public class VPLFrame extends View implements SensorEventListener {
 
     public void flushState() {
         double currTimeGap = tooManyObjs ? timeGap : timeGap / 5;
+
         for (int i = 0; i < movingObjList.size(); i++) {
             MovingObj movingObj = movingObjList.get(i);
             MathVector v = new MathVector(gx, -gy);
@@ -1165,6 +1255,30 @@ public class VPLFrame extends View implements SensorEventListener {
                             hasImpactSound = false;
                         }
                     }
+                    for (ParticleGenerator generator : generatorList) {
+                        if (generator.on) {
+                            MovingObj movingObj;
+                            switch (generator.kind) {
+                                default:
+                                    break;
+                                case 1:
+                                    if ((VPLFrame.this.timeCounter * VPLFrame.this.timeGap / 1000.0D <= generator.now) && ((VPLFrame.this.timeCounter + 1) * VPLFrame.this.timeGap / 1000.0D > generator.now) && (generator.now <= generator.to)) {
+                                        movingObj = generator.movingObj.clone();
+                                        VPLFrame.this.movingObjList.add(movingObj);
+                                        generator.now += generator.gap;
+                                    }
+                                    break;
+                                case 2:
+                                    for (double d = generator.from; d <= generator.to; d += generator.gap) {
+                                        movingObj = generator.movingObj.clone();
+                                        movingObj.vx = (generator.movingObj.getV() * Math.cos(Math.PI * d / 180.0D));
+                                        movingObj.vy = (generator.movingObj.getV() * Math.sin(Math.PI * d / 180.0D));
+                                        VPLFrame.this.movingObjList.add(movingObj);
+                                    }
+                                    generator.on = false;
+                            }
+                        }
+                    }
                     handler.sendEmptyMessage(0);
                     break;
                 case 1:
@@ -1235,6 +1349,7 @@ public class VPLFrame extends View implements SensorEventListener {
         ArrayList<Field> fieldList;
         ArrayList<Connecter> connecterList;
         ArrayList<Track> trackList;
+        ArrayList<ParticleGenerator> generatorList;
 
         public SaveInstance() {
             movingObjList = new ArrayList<>();
@@ -1242,6 +1357,7 @@ public class VPLFrame extends View implements SensorEventListener {
             fieldList = new ArrayList<>();
             connecterList = new ArrayList<>();
             trackList = new ArrayList<>();
+            generatorList = new ArrayList<>();
         }
 
     }
@@ -1251,6 +1367,7 @@ public class VPLFrame extends View implements SensorEventListener {
         //tooManyObjs = movingObjList.size() >= 5;
         tooManyObjs = false;
         mRunning = true;
+        //ExecutorService threadPool= Executors.newFixedThreadPool(movingObjList.size());
     }
 
     public void end() {
@@ -1451,7 +1568,7 @@ public class VPLFrame extends View implements SensorEventListener {
         double radius;
     }
 
-    public class Field extends Changeable {
+    public class Field extends Changeable implements Cloneable {
         static final int HORIZONTAL = 0;//水平
         static final int VERTICAL = 1;//竖直
         double x1, y1, x2, y2;
@@ -1459,6 +1576,16 @@ public class VPLFrame extends View implements SensorEventListener {
         int kind;
         int direction;
         double coefficient = 1;
+
+        public Field clone() {
+            try {
+                Field localField = (Field) super.clone();
+                return localField;
+            } catch (CloneNotSupportedException localCloneNotSupportedException) {
+                localCloneNotSupportedException.printStackTrace();
+            }
+            return null;
+        }
 
         @Override
         public void change(double time) {
@@ -1531,11 +1658,51 @@ public class VPLFrame extends View implements SensorEventListener {
         }
     }
 
-    public class Track {
+    public class ParticleGenerator
+            implements Cloneable {
+        double from;
+        double gap;
+        int kind;
+        VPLFrame.MovingObj movingObj;
+        double now;
+        boolean on = true;
+        double to;
+
+        public ParticleGenerator(VPLFrame.MovingObj paramMovingObj, int paramInt, double paramDouble1, double paramDouble2, double paramDouble3) {
+            this.movingObj = paramMovingObj;
+            this.kind = paramInt;
+            this.from = paramDouble1;
+            this.to = paramDouble2;
+            this.gap = paramDouble3;
+            this.now = paramDouble3;
+        }
+
+        public ParticleGenerator clone() {
+            try {
+                ParticleGenerator generator = (ParticleGenerator) super.clone();
+                return generator;
+            } catch (CloneNotSupportedException localCloneNotSupportedException) {
+                localCloneNotSupportedException.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    public class Track implements Cloneable {
         int kind;
         double x1, y1, x2, y2;
         double radius, start, end;
         boolean objRemover = false;
+
+        public Track clone() {
+            try {
+                Track localTrack = (Track) super.clone();
+                return localTrack;
+            } catch (CloneNotSupportedException localCloneNotSupportedException) {
+                localCloneNotSupportedException.printStackTrace();
+            }
+            return null;
+        }
 
         public Track(double arg_x1, double arg_y1, double arg_x2, double arg_y2, boolean arg_remover) {
             x1 = arg_x1;
@@ -1558,11 +1725,21 @@ public class VPLFrame extends View implements SensorEventListener {
 
     }
 
-    public class ForceCenter {
+    public class ForceCenter implements Cloneable {
         int kind;
         Paint paint;
         double value;
         double x, y;
+
+        public ForceCenter clone() {
+            try {
+                ForceCenter localForceCenter = (ForceCenter) super.clone();
+                return localForceCenter;
+            } catch (CloneNotSupportedException localCloneNotSupportedException) {
+                localCloneNotSupportedException.printStackTrace();
+            }
+            return null;
+        }
 
         public ForceCenter(double arg_x, double arg_y, double arg_value, int arg_kind) {
             paint = new Paint();
@@ -1575,11 +1752,21 @@ public class VPLFrame extends View implements SensorEventListener {
         }
     }
 
-    public class Connecter {
+    public class Connecter implements Cloneable {
         double length = 0;
         int obj1, obj2;
         int kind;
         double k = 0;
+
+        public Connecter clone() {
+            try {
+                Connecter localConnecter = (Connecter) super.clone();
+                return localConnecter;
+            } catch (CloneNotSupportedException localCloneNotSupportedException) {
+                localCloneNotSupportedException.printStackTrace();
+            }
+            return null;
+        }
 
         public Connecter(int arg_obj1, int arg_obj2, double arg_k, double arg_length, int arg_kind) {
             obj1 = arg_obj1;
