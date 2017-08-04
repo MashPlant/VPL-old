@@ -47,12 +47,13 @@ public class VPLFrame extends View implements SensorEventListener {
     float ratio = 20;
     private int height, width;
     private double deltaX = 0, deltaY = 0;
-    private boolean mRunning = false, tooManyObjs = false;
-    double timeGap = 0.2;
+    private boolean mRunning = false;
+    double timeGap = 0.04;
     double G = 6.67E-11, K = 9E9, g = 0, c = 3E8;
     private double gx = 0, gy = 0;
     boolean doImpact = true, hasBoundary = true, doBetG = false, doBetE = false, doRelativity = false;
     boolean doImpactSound = true, hasImpactSound = false, doDrawTrace = true, doDynamicOri = false;
+    boolean doMultiThread = false;
     boolean strongInteraction = false;
     private PrintFrame printFrame;
     private PrintTrace printTrace;
@@ -307,8 +308,7 @@ public class VPLFrame extends View implements SensorEventListener {
             drawAL(width / 2, height - 80, width / 2 + 80 * gx / g, height - 80 + 80 * gy / g, true, canvas, PrintFrame.redLine);
             canvas.drawText("g", width / 2 + 20, height - 40, PrintFrame.wordPainter);
         }
-        double currTimeGap = tooManyObjs ? timeGap : timeGap / 5;
-        canvas.drawText(String.format("%.1f", timeCounter * currTimeGap / 1000), 50, 50, PrintFrame.wordPainter);
+        canvas.drawText(String.format("%.1f", timeCounter * timeGap / 1000), 50, 50, PrintFrame.wordPainter);
         for (int i = 0; i < connecterList.size(); i++) {
             Connecter connecter = connecterList.get(i);
             MovingObj obj1 = movingObjList.get(connecter.obj1);
@@ -1038,182 +1038,192 @@ public class VPLFrame extends View implements SensorEventListener {
         return true;
 
     }
-
-    public void flushState() {
-        double currTimeGap = tooManyObjs ? timeGap : timeGap / 5;
-
-        for (int i = 0; i < movingObjList.size(); i++) {
-            MovingObj movingObj = movingObjList.get(i);
-            MathVector v = new MathVector(gx, -gy);
-            for (int j = 0; j < fieldList.size(); j++) {
-                Field field = fieldList.get(j);
-                if (!field.belongTo(movingObj))
+    private void flushState(int i) {
+        MovingObj movingObj = movingObjList.get(i);
+        MathVector v = new MathVector(gx, -gy);
+        for (int j = 0; j < fieldList.size(); j++) {
+            Field field = fieldList.get(j);
+            if (!field.belongTo(movingObj))
+                continue;
+            switch (field.kind) {
+                case E_FIELD:
+                    if (field.direction == Field.VERTICAL)
+                        v.add(new MathVector(0, field.value * movingObj.q / movingObj.m));
+                    else
+                        v.add(new MathVector(field.value * movingObj.q / movingObj.m, 0));
+                    break;
+                case M_FIELD:
+                case CIRCLE_M_FIELD:
+                    double omega = timeGap * field.value * movingObj.q / movingObj.m / 1000;
+                    MathVector v1 = new MathVector(movingObj.vx, movingObj.vy).revolve(omega);
+                    movingObj.vx = v1.x;
+                    movingObj.vy = v1.y;
+                    break;
+                case DAMP:
+                    if (movingObj.getV() != 0)
+                        v.add(MathVector.formVectorAs(field.value * Math.pow(movingObj.getV(), field.coefficient) / movingObj.m, new MathVector(-movingObj.vx, -movingObj.vy)));
+                    break;
+            }
+        }
+        for (int j = 0; j < forceCenterList.size(); j++) {
+            ForceCenter forceCenter = forceCenterList.get(j);
+            MathVector distance = new MathVector(forceCenter.x - movingObj.x, forceCenter.y - movingObj.y);
+            switch (forceCenter.kind) {
+                case G_CENTER:
+                    v.add(MathVector.formVectorAs((G * forceCenter.value / Math.pow(distance.getLength(), 2)), distance));
+                    break;
+                case E_CENTER:
+                    v.add(MathVector.formVectorAs((-K * forceCenter.value * movingObj.q / movingObj.m / Math.pow(distance.getLength(), 2)), distance));
+                    break;
+            }
+        }
+        if (doBetE) {
+            for (int j = 0; j < movingObjList.size(); j++) {
+                if (i == j)
                     continue;
-                switch (field.kind) {
-                    case E_FIELD:
-                        if (field.direction == Field.VERTICAL)
-                            v.add(new MathVector(0, field.value * movingObj.q / movingObj.m));
-                        else
-                            v.add(new MathVector(field.value * movingObj.q / movingObj.m, 0));
-                        break;
-                    case M_FIELD:
-                    case CIRCLE_M_FIELD:
-                        double omega = currTimeGap * field.value * movingObj.q / movingObj.m / 1000;
-                        MathVector v1 = new MathVector(movingObj.vx, movingObj.vy).revolve(omega);
-                        movingObj.vx = v1.x;
-                        movingObj.vy = v1.y;
-                        break;
-                    case DAMP:
-                        if (movingObj.getV() != 0)
-                            v.add(MathVector.formVectorAs(field.value * Math.pow(movingObj.getV(), field.coefficient) / movingObj.m, new MathVector(-movingObj.vx, -movingObj.vy)));
-                        break;
-                }
+                MovingObj movingObj1 = movingObjList.get(j);
+                MathVector distance = new MathVector(movingObj.x - movingObj1.x, movingObj.y - movingObj1.y);
+                v.add(MathVector.formVectorAs((K * movingObj.q * movingObj1.q / movingObj.m / Math.pow(distance.getLength(), 2)), distance));
             }
-            for (int j = 0; j < forceCenterList.size(); j++) {
-                ForceCenter forceCenter = forceCenterList.get(j);
-                MathVector distance = new MathVector(forceCenter.x - movingObj.x, forceCenter.y - movingObj.y);
-                switch (forceCenter.kind) {
-                    case G_CENTER:
-                        v.add(MathVector.formVectorAs((G * forceCenter.value / Math.pow(distance.getLength(), 2)), distance));
-                        break;
-                    case E_CENTER:
-                        v.add(MathVector.formVectorAs((-K * forceCenter.value * movingObj.q / movingObj.m / Math.pow(distance.getLength(), 2)), distance));
-                        break;
-                }
+        }
+        if (doBetG) {
+            for (int j = 0; j < movingObjList.size(); j++) {
+                if (i == j)
+                    continue;
+                MovingObj movingObj1 = movingObjList.get(j);
+                MathVector distance = new MathVector(movingObj.x - movingObj1.x, movingObj.y - movingObj1.y);
+                v.add(MathVector.formVectorAs(-(G * movingObj1.m / Math.pow(distance.getLength(), 2)), distance));
             }
-            if (doBetE) {
-                for (int j = 0; j < movingObjList.size(); j++) {
-                    if (i == j)
-                        continue;
-                    MovingObj movingObj1 = movingObjList.get(j);
-                    MathVector distance = new MathVector(movingObj.x - movingObj1.x, movingObj.y - movingObj1.y);
-                    v.add(MathVector.formVectorAs((K * movingObj.q * movingObj1.q / movingObj.m / Math.pow(distance.getLength(), 2)), distance));
-                }
-            }
-            if (doBetG) {
-                for (int j = 0; j < movingObjList.size(); j++) {
-                    if (i == j)
-                        continue;
-                    MovingObj movingObj1 = movingObjList.get(j);
-                    MathVector distance = new MathVector(movingObj.x - movingObj1.x, movingObj.y - movingObj1.y);
-                    v.add(MathVector.formVectorAs(-(G * movingObj1.m / Math.pow(distance.getLength(), 2)), distance));
-                }
-            }
-            movingObj.vx += v.x * currTimeGap / 1000;
-            movingObj.vy += v.y * currTimeGap / 1000;
+        }
+        movingObj.vx += v.x * timeGap / 1000;
+        movingObj.vy += v.y * timeGap / 1000;
 
-            if (hasBoundary) {
-                double x = toRawX(movingObj.x), y = toRawY(movingObj.y), r = movingObj.radius * ratio;
-                if (x + r >= width || x - r <= 0) {
-                    movingObj.vx = -movingObj.vx;
-                    if (movingObj.vx != 0)
-                        hasImpactSound = true;
-                }
-                if (y + r >= height || y - r <= 0) {
-                    movingObj.vy = -movingObj.vy;
-                    if (movingObj.vy != 0)
-                        hasImpactSound = true;
-                }
+        if (hasBoundary) {
+            double x = toRawX(movingObj.x), y = toRawY(movingObj.y), r = movingObj.radius * ratio;
+            if (x + r >= width || x - r <= 0) {
+                movingObj.vx = -movingObj.vx;
+                if (movingObj.vx != 0)
+                    hasImpactSound = true;
             }
+            if (y + r >= height || y - r <= 0) {
+                movingObj.vy = -movingObj.vy;
+                if (movingObj.vy != 0)
+                    hasImpactSound = true;
+            }
+        }
 
-            for (int k = 0; k < trackList.size(); k++) {
-                Track track = trackList.get(k);
-                double distance;
-                MathVector speed = new MathVector(movingObj.vx, movingObj.vy);
-                switch (track.kind) {
-                    case LINE_TRACK:
-                        distance = MathVector.distanceDotToLine(movingObj.x, movingObj.y, track.x1, track.y1, track.x2, track.y2);
-                        if (distance <= movingObj.radius) {
-                            double[] pedal = MathVector.pedalDotToLine(movingObj.x, movingObj.y, track.x1, track.y1, track.x2, track.y2);
-                            if ((pedal[0] <= Math.max(track.x1, track.x2) && pedal[0] >= Math.min(track.x1, track.x2)) || (pedal[1] >= Math.min(track.y1, track.y2) && pedal[1] <= Math.max(track.y1, track.y2))) {
-                                MathVector line = new MathVector(track.x1 - track.x2, track.y1 - track.y2);
-                                if (track.objRemover) {
-                                    movingObjList.remove(i);
-                                } else {
-                                    if (speed.multiply(line) < 0) {
-                                        line.x = -line.x;
-                                        line.y = -line.y;
-                                    }
-                                    speed.substract(speed.shadow(line));
-                                    movingObj.vx -= 2 * speed.x;
-                                    movingObj.vy -= 2 * speed.y;
+        for (int k = 0; k < trackList.size(); k++) {
+            Track track = trackList.get(k);
+            double distance;
+            MathVector speed = new MathVector(movingObj.vx, movingObj.vy);
+            switch (track.kind) {
+                case LINE_TRACK:
+                    distance = MathVector.distanceDotToLine(movingObj.x, movingObj.y, track.x1, track.y1, track.x2, track.y2);
+                    if (distance <= movingObj.radius) {
+                        double[] pedal = MathVector.pedalDotToLine(movingObj.x, movingObj.y, track.x1, track.y1, track.x2, track.y2);
+                        if ((pedal[0] <= Math.max(track.x1, track.x2) && pedal[0] >= Math.min(track.x1, track.x2)) || (pedal[1] >= Math.min(track.y1, track.y2) && pedal[1] <= Math.max(track.y1, track.y2))) {
+                            MathVector line = new MathVector(track.x1 - track.x2, track.y1 - track.y2);
+                            if (track.objRemover) {
+                                movingObjList.remove(i);
+                            } else {
+                                if (speed.multiply(line) < 0) {
+                                    line.x = -line.x;
+                                    line.y = -line.y;
                                 }
+                                speed.substract(speed.shadow(line));
+                                movingObj.vx -= 2 * speed.x;
+                                movingObj.vy -= 2 * speed.y;
                             }
                         }
-                        break;
-                    case CIRCLE_TRACK:
-                        distance = Math.sqrt(Math.pow(track.x1 - movingObj.x, 2) + Math.pow(track.y1 - movingObj.y, 2));
-                        if (distance <= movingObj.radius + track.radius && distance >= -movingObj.radius + track.radius) {
-                            if (isInArc(track.start, track.end, movingObj.x, movingObj.y, track.x1, track.y1, distance)) {
-                                if (track.objRemover) {
-                                    movingObjList.remove(i);
-                                } else {
-                                    MathVector tangent = new MathVector(track.y1 - movingObj.y, -track.x1 + movingObj.x);
-                                    if (speed.multiply(tangent) < 0) {
-                                        tangent.x = -tangent.x;
-                                        tangent.y = -tangent.y;
-                                    }
-                                    speed.substract(speed.shadow(tangent));
-                                    movingObj.vx -= 2 * speed.x;
-                                    movingObj.vy -= 2 * speed.y;
+                    }
+                    break;
+                case CIRCLE_TRACK:
+                    distance = Math.sqrt(Math.pow(track.x1 - movingObj.x, 2) + Math.pow(track.y1 - movingObj.y, 2));
+                    if (distance <= movingObj.radius + track.radius && distance >= -movingObj.radius + track.radius) {
+                        if (isInArc(track.start, track.end, movingObj.x, movingObj.y, track.x1, track.y1, distance)) {
+                            if (track.objRemover) {
+                                movingObjList.remove(i);
+                            } else {
+                                MathVector tangent = new MathVector(track.y1 - movingObj.y, -track.x1 + movingObj.x);
+                                if (speed.multiply(tangent) < 0) {
+                                    tangent.x = -tangent.x;
+                                    tangent.y = -tangent.y;
                                 }
-
+                                speed.substract(speed.shadow(tangent));
+                                movingObj.vx -= 2 * speed.x;
+                                movingObj.vy -= 2 * speed.y;
                             }
+
                         }
-                        break;
-                }
+                    }
+                    break;
             }
-            if (doImpact) {
-                for (int k = i + 1; k < movingObjList.size(); k++) {
-                    MovingObj movingObj1 = movingObjList.get(k);
-                    double distance = getDistance(movingObj, movingObj1);
-                    if (distance <= movingObj.radius + movingObj1.radius
-                            && (strongInteraction || distance >= getLaterDistance(movingObj1, movingObj, currTimeGap))) {
-                        if (movingObj.getV() != 0 || movingObj1.getV() != 0) {
-                            hasImpactSound = true;
-                            impact(movingObj, movingObj1);
-                        }
+        }
+        if (doImpact) {
+            for (int k = i + 1; k < movingObjList.size(); k++) {
+                MovingObj movingObj1 = movingObjList.get(k);
+                double distance = getDistance(movingObj, movingObj1);
+                if (distance <= movingObj.radius + movingObj1.radius
+                        && (strongInteraction || distance >= getLaterDistance(movingObj1, movingObj, timeGap))) {
+                    if (movingObj.getV() != 0 || movingObj1.getV() != 0) {
+                        hasImpactSound = true;
+                        impact(movingObj, movingObj1);
                     }
                 }
             }
         }
-
-        for (int i = 0; i < connecterList.size(); i++) {
-            Connecter connecter = connecterList.get(i);
+        movingObj.x += movingObj.vx * timeGap / 1000;
+        movingObj.y += movingObj.vy * timeGap / 1000;
+        if (doRelativity) {
+            double speed = movingObj.getV();
+            if (speed >= 0.25 * c) {
+                if (speed >= c) {
+                    movingObj.vx *= c / speed;
+                    movingObj.vy *= c / speed;
+                } else
+                    movingObj.m = movingObj.m0 / Math.sqrt(1 - speed * speed / c / c);
+            }
+        }
+        for (int j = 0; j < connecterList.size(); j++) {
+            Connecter connecter = connecterList.get(j);
             MovingObj obj1 = movingObjList.get(connecter.obj1);
             MovingObj obj2 = movingObjList.get(connecter.obj2);
             double distance = getDistance(obj1, obj2);
             switch (connecter.kind) {
                 case ROPE:
                     if (distance >= connecter.length
-                            && distance <= getLaterDistance(obj1, obj2, currTimeGap))
+                            && distance <= getLaterDistance(obj1, obj2, timeGap))
                         impact(obj1, obj2);
                     break;
                 case POLE:
                     impact(obj1, obj2);
                     break;
                 case SPRING:
-                    MathVector v = MathVector.formVectorAs(connecter.k * (distance - connecter.length) * currTimeGap / 1000, new MathVector(obj1.x - obj2.x, obj1.y - obj2.y));
-                    obj1.vx -= v.x / obj1.m;
-                    obj1.vy -= v.y / obj1.m;
-                    obj2.vx += v.x / obj2.m;
-                    obj2.vy += v.y / obj2.m;
+                    MathVector ve = MathVector.formVectorAs(connecter.k * (distance - connecter.length) * timeGap / 1000, new MathVector(obj1.x - obj2.x, obj1.y - obj2.y));
+                    obj1.vx -= ve.x / obj1.m;
+                    obj1.vy -= ve.y / obj1.m;
+                    obj2.vx += ve.x / obj2.m;
+                    obj2.vy += ve.y / obj2.m;
                     break;
             }
 
         }
-        for (int i = 0; i < movingObjList.size(); i++) {
-            MovingObj movingObj = movingObjList.get(i);
-            movingObj.x += movingObj.vx * currTimeGap / 1000;
-            movingObj.y += movingObj.vy * currTimeGap / 1000;
-            if (doRelativity) {
-                double v = movingObj.getV();
-                if (v >= 0.25 * c) {
-                    if (v >= c)
-                        v = c;
-                    movingObj.m = movingObj.m0 / Math.sqrt(1 - v * v / c / c);
-                }
+    }
+
+    public void flushState() {
+        if (doMultiThread) {
+            for (int z = 0; z < movingObjList.size(); z++) {
+                final int i = z;
+                threadPool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        flushState(i);
+                    }
+                });
             }
+        } else {
+            for (int z = 0; z < movingObjList.size(); z++)
+                flushState(z);
         }
     }
 
@@ -1238,17 +1248,16 @@ public class VPLFrame extends View implements SensorEventListener {
             switch (msg.what) {
                 case 0:
                     flushState();//75:375
-                    if ((timeCounter++) % (tooManyObjs ? 75 : 375) == 0) {
+                    if ((timeCounter++) % 375 == 0) {
                         invalidate();
                         printFrame.invalidate();
                     }
                     if ((timeCounter % 30) == 0) {
-                        double currTimeGap = tooManyObjs ? timeGap : timeGap / 5;
                         for (MovingObj movingObj : movingObjList) {
-                            movingObj.change(timeCounter * currTimeGap / 1000);
+                            movingObj.change(timeCounter * timeGap / 1000);
                         }
                         for (Field field : fieldList) {
-                            field.change(timeCounter * currTimeGap / 1000);
+                            field.change(timeCounter * timeGap / 1000);
                         }
                         if (doImpactSound && hasImpactSound) {
                             handler.sendEmptyMessage(4);
@@ -1261,14 +1270,14 @@ public class VPLFrame extends View implements SensorEventListener {
                             switch (generator.kind) {
                                 default:
                                     break;
-                                case 1:
+                                case GENERATOR_TIME:
                                     if ((VPLFrame.this.timeCounter * VPLFrame.this.timeGap / 1000.0D <= generator.now) && ((VPLFrame.this.timeCounter + 1) * VPLFrame.this.timeGap / 1000.0D > generator.now) && (generator.now <= generator.to)) {
                                         movingObj = generator.movingObj.clone();
                                         VPLFrame.this.movingObjList.add(movingObj);
                                         generator.now += generator.gap;
                                     }
                                     break;
-                                case 2:
+                                case GENERATOR_ANGLE:
                                     for (double d = generator.from; d <= generator.to; d += generator.gap) {
                                         movingObj = generator.movingObj.clone();
                                         movingObj.vx = (generator.movingObj.getV() * Math.cos(Math.PI * d / 180.0D));
@@ -1361,26 +1370,27 @@ public class VPLFrame extends View implements SensorEventListener {
         }
 
     }
-
+    ExecutorService threadPool;
     public void start() {
         handler.sendEmptyMessage(0);
-        //tooManyObjs = movingObjList.size() >= 5;
-        tooManyObjs = false;
         mRunning = true;
-        //ExecutorService threadPool= Executors.newFixedThreadPool(movingObjList.size());
+        if (movingObjList.size()!=0)
+            threadPool = Executors.newFixedThreadPool(movingObjList.size());
     }
 
     public void end() {
+        pause();
         timeCounter = 1;
         handler.sendEmptyMessage(3);
         choosingX = choosingY = 0;
         mRunning = false;
-        pause();
         invalidate();
         printFrame.invalidate();
     }
 
     public void pause() {
+        if (threadPool!=null)
+            threadPool.shutdownNow();
         choosingX = choosingY = 0;
         handler.removeMessages(0);
     }

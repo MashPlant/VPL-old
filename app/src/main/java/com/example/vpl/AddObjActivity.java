@@ -525,7 +525,7 @@ public class AddObjActivity extends AppCompatActivity {
                             vplFrame.K = values[1];
                             vplFrame.g = values[2];
                             vplFrame.c = values[3];
-                            vplFrame.timeGap = values[4] * 0.2;
+                            vplFrame.timeGap = values[4] * 0.04;
                             vplFrame.ratio = values[5].floatValue();
                             vplFrame.doBetG = chooses[6];
                             vplFrame.doBetE = chooses[7];
@@ -536,6 +536,7 @@ public class AddObjActivity extends AppCompatActivity {
                             vplFrame.doImpactSound = chooses[12];
                             vplFrame.doDrawTrace = chooses[13];
                             vplFrame.doDynamicOri = chooses[14];
+                            vplFrame.doMultiThread=chooses[15];
                             SharedPreferences.Editor editor = getSharedPreferences("datas", Activity.MODE_PRIVATE).edit();
                             editor.putString("G", Double.toString(vplFrame.G));
                             editor.putString("K", Double.toString(vplFrame.K));
@@ -547,9 +548,11 @@ public class AddObjActivity extends AppCompatActivity {
                             editor.putString("doImpact", Boolean.toString(vplFrame.doImpact));
                             editor.putString("hasBoundary", Boolean.toString(vplFrame.hasBoundary));
                             editor.putString("doRelativity", Boolean.toString(vplFrame.doRelativity));
+                            editor.putString("strongInteraction",Boolean.toString(vplFrame.strongInteraction));
                             editor.putString("doImpactSound", Boolean.toString(vplFrame.doImpactSound));
                             editor.putString("doDrawTrace", Boolean.toString(vplFrame.doDrawTrace));
                             editor.putString("doDynamicOri", Boolean.toString(vplFrame.doDynamicOri));
+                            editor.putString("doMultiThread",Boolean.toString(vplFrame.doMultiThread));
                             editor.apply();
                             finish();
                             break;
@@ -841,7 +844,7 @@ public class AddObjActivity extends AppCompatActivity {
                 settingItemList.add(new SettingItem("静电力常量K", Double.toString(vplFrame.K), SettingItem.INPUT));
                 settingItemList.add(new SettingItem("重力加速度g", Double.toString(vplFrame.g), SettingItem.INPUT));
                 settingItemList.add(new SettingItem("真空光速c", Double.toString(vplFrame.c), SettingItem.INPUT));
-                settingItemList.add(new SettingItem("运行速度", Double.toString(vplFrame.timeGap / 0.2), SettingItem.INPUT));
+                settingItemList.add(new SettingItem("运行速度", Double.toString(vplFrame.timeGap / 0.04), SettingItem.INPUT));
                 settingItemList.add(new SettingItem("绘图比例", Double.toString(vplFrame.ratio), SettingItem.INPUT));
                 settingItemList.add(new SettingItem("考虑对象间引力", " | |" + vplFrame.doBetG, SettingItem.CHOOSE));
                 settingItemList.add(new SettingItem("考虑对象间电场力", " | |" + vplFrame.doBetE, SettingItem.CHOOSE));
@@ -852,6 +855,7 @@ public class AddObjActivity extends AppCompatActivity {
                 settingItemList.add(new SettingItem("碰撞音效", " | |" + vplFrame.doImpactSound, SettingItem.CHOOSE));
                 settingItemList.add(new SettingItem("绘制轨迹", " | |" + vplFrame.doDrawTrace, SettingItem.CHOOSE));
                 settingItemList.add(new SettingItem("动态重力方向", " | |" + vplFrame.doDynamicOri, SettingItem.CHOOSE));
+                settingItemList.add(new SettingItem("多线程加速", " | |" + vplFrame.doMultiThread, SettingItem.CHOOSE));
                 break;
             case VPLFrame.ROPE:
             case VPLFrame.POLE:

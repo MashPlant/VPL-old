@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                vplFrame.timeGap=0.2*Math.exp(progress/10.0-5.0);
+                vplFrame.timeGap = 0.04 * Math.exp(progress / 10.0 - 5.0);
             }
 
             @Override
@@ -136,8 +136,8 @@ public class MainActivity extends AppCompatActivity {
                     removeAllFab();
                     play.setVisibility(View.VISIBLE);
                     add.setVisibility(View.VISIBLE);
-                    vplFrame.getSaveInstance();
                     vplFrame.end();
+                    vplFrame.getSaveInstance();
                     printTrace.clear(1);
                 }
             });
@@ -206,15 +206,17 @@ public class MainActivity extends AppCompatActivity {
         vplFrame.K = Double.valueOf(datas.getString("K", "9E9"));
         vplFrame.g = Double.valueOf(datas.getString("g", "0"));
         vplFrame.c = Double.valueOf(datas.getString("c", "3E8"));
-        vplFrame.timeGap = Double.valueOf(datas.getString("timeGap", "0.2"));
+        vplFrame.timeGap = Double.valueOf(datas.getString("timeGap", "0.04"));
         vplFrame.doBetG = Boolean.valueOf(datas.getString("doBetG", "false"));
         vplFrame.doBetE = Boolean.valueOf(datas.getString("doBetE", "false"));
         vplFrame.doImpact = Boolean.valueOf(datas.getString("doImpact", "true"));
         vplFrame.hasBoundary = Boolean.valueOf(datas.getString("hasBoundary", "true"));
+        vplFrame.strongInteraction=Boolean.valueOf(datas.getString("strongInteraction", "false"));
         vplFrame.doRelativity = Boolean.valueOf(datas.getString("doRelativity", "false"));
         vplFrame.doImpactSound = Boolean.valueOf(datas.getString("doImpactSound", "true"));
         vplFrame.doDrawTrace = Boolean.valueOf(datas.getString("doDrawTrace", "true"));
         vplFrame.doDynamicOri = Boolean.valueOf(datas.getString("doDynamicOri", "false"));
+        vplFrame.doMultiThread=Boolean.valueOf(datas.getString("doMultiThread", "false"));
     }
 
     public static void removeAllFab() {
