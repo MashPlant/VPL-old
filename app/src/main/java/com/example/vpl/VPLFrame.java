@@ -29,8 +29,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by MashPlant on 2016/4/4.
@@ -1172,8 +1175,7 @@ public class VPLFrame extends View implements SensorEventListener {
                 }
             }
         }
-        movingObj.x += movingObj.vx * timeGap / 1000;
-        movingObj.y += movingObj.vy * timeGap / 1000;
+
         if (doRelativity) {
             double speed = movingObj.getV();
             if (speed >= 0.25 * c) {
@@ -1209,21 +1211,42 @@ public class VPLFrame extends View implements SensorEventListener {
 
         }
     }
-
+    //private AtomicInteger cnt=new AtomicInteger(0);
     public void flushState() {
-        if (doMultiThread) {
+        if (doMultiThread && movingObjList.size() > 2) {
+            //cnt.getAndSet(0);
             for (int z = 0; z < movingObjList.size(); z++) {
                 final int i = z;
                 threadPool.execute(new Runnable() {
                     @Override
                     public void run() {
                         flushState(i);
+                        //cnt.getAndIncrement();
                     }
                 });
             }
+            //while (cnt.intValue() != movingObjList.size());
+            for (int z = 0; z < movingObjList.size(); z++) {
+                final int i = z;
+                threadPool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        MovingObj movingObj = movingObjList.get(i);
+                        movingObj.x += movingObj.vx * timeGap / 1000;
+                        movingObj.y += movingObj.vy * timeGap / 1000;
+                    }
+                });
+            }
+
+
         } else {
             for (int z = 0; z < movingObjList.size(); z++)
                 flushState(z);
+            for (int z = 0; z < movingObjList.size(); z++){
+                MovingObj movingObj=movingObjList.get(z);
+                movingObj.x += movingObj.vx * timeGap / 1000;
+                movingObj.y += movingObj.vy * timeGap / 1000;
+            }
         }
     }
 
@@ -1247,7 +1270,7 @@ public class VPLFrame extends View implements SensorEventListener {
             super.handleMessage(msg);
             switch (msg.what) {
                 case 0:
-                    flushState();//75:375
+                    flushState();
                     if ((timeCounter++) % 375 == 0) {
                         invalidate();
                         printFrame.invalidate();
