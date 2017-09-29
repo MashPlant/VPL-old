@@ -46,7 +46,7 @@ public class VPLFrame extends View implements SensorEventListener {
     private ArrayList<Field> fieldList = new ArrayList<>();
     private ArrayList<Connecter> connecterList = new ArrayList<>();
     private ArrayList<Track> trackList = new ArrayList<>();
-    private ArrayList<ParticleGenerator> generatorList = new ArrayList();
+    private ArrayList<ParticleGenerator> generatorList = new ArrayList<>();
     float ratio = 20;
     private int height, width;
     private double deltaX = 0, deltaY = 0;
